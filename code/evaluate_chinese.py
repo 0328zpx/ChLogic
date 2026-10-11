@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 """Evaluate an OpenAI-compatible chat model on a Chinese ChLogic column."""
 
@@ -90,6 +91,26 @@ def build_prompt(query_text: str) -> str:
 {query_text}"""
 
 
+# 新增：General / Difficult 专用二分类提示词
+def build_prompt_binary(query_text: str) -> str:
+    return f"""你现在要完成一个中文逻辑推理判断任务。
+
+请仔细阅读下面的事实和问题，判断问题中的结论是否能由事实必然推出。
+
+你只能输出下面两个选项中的一个：
+是
+否
+
+含义：
+- 是：结论能由事实必然推出。
+- 否：结论不能由事实必然推出。
+
+不要输出解释、标点或其他内容。
+
+题目：
+{query_text}"""
+
+
 def main() -> None:
     args = build_parser().parse_args()
     api_key = os.environ.get(args.api_key_env)
@@ -129,7 +150,11 @@ def main() -> None:
             print(f"[WARN] Row {index}: invalid gold label {gold_raw!r}; skipped.")
             continue
 
-        prompt = build_prompt(query)
+        # 修改：根据数据集名称选择二分类或三分类提示词
+        if dataset_path.name in {"general_aligned.csv", "difficult_aligned.csv"}:
+            prompt = build_prompt_binary(query)
+        else:
+            prompt = build_prompt(query)
 
         def api_call() -> str:
             kwargs: Dict[str, Any] = {
