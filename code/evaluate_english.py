@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 """Evaluate an OpenAI-compatible chat model on an English ChLogic column."""
 
@@ -104,6 +105,25 @@ Input:
 {query_text}"""
 
 
+def build_prompt_binary(query_text: str) -> str:
+    return f"""You are solving a symbolic logic reasoning task.
+
+Read the following facts and question carefully. Determine whether the conclusion in the question necessarily follows from the facts.
+
+Answer with exactly one word:
+yes
+no
+
+Definitions:
+- yes: the conclusion necessarily follows.
+- no: the conclusion does not necessarily follow from the facts.
+
+Do not output explanations, punctuation, or extra text.
+
+Input:
+{query_text}"""
+
+
 def main() -> None:
     args = build_parser().parse_args()
     api_key = os.environ.get(args.api_key_env)
@@ -143,7 +163,10 @@ def main() -> None:
             print(f"[WARN] Row {index}: invalid gold label {gold_raw!r}; skipped.")
             continue
 
-        prompt = build_prompt(query)
+        if dataset_path.name in {"general_aligned.csv", "difficult_aligned.csv"}:
+            prompt = build_prompt_binary(query)
+        else:
+            prompt = build_prompt(query)
 
         def api_call() -> str:
             kwargs: Dict[str, Any] = {
